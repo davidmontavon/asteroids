@@ -1,0 +1,212 @@
+@font-face {
+  font-family: vcrosd;
+  src: url("Commodore Pixelized v1.2.ttf");
+}
+  
+:root {
+  --turquoise-color: #2df6ec;
+  --pink-color: #ee67f0;
+  --white-color: #fff;
+  --dark-color: #2b1641;
+}
+  
+body {
+  background-color: var(--dark-color);
+  font-size: 18pt;
+  font-family: vcrosd;
+}
+
+#game,
+#effects,
+#gameOverScreen,
+#topScoresScreen {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+#gameOverScreen {
+    display: table;
+    z-index: 3;
+}
+
+#topScoresScreen {
+  z-index: 4;
+  background-color: var(--dark-color);
+}  
+
+#topScoresScreen > div {
+  display: flex;justify-content: center;
+  width: 100%;
+  text-align: center;
+}  
+
+#topScoresScreen > div > table {
+  width: 380px;
+  align-self: center;
+}
+
+#topScoresScreen > div > table > tr > td {
+  text-align: left;
+}
+#topScoresScreen > div > table > tr > td+td {
+  text-align: right;
+}
+
+#topScoresScreen > p {
+  text-align: center;
+}
+
+#gameOverScreen > div {
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;    
+}
+
+#gameOverScreen > div > div {
+  font-size: 32pt;
+  animation: scale 2s linear, blink2 2s infinite alternate;
+}
+
+#gameOverScreen > div > div+div {
+  margin-top: 20px;
+  font-size: 20pt;
+  opacity: 0;
+  animation: fadein 2s 1s ease-in normal forwards;
+}
+
+#game {
+  z-index: 1;
+}
+
+#effects {
+  z-index: 2;
+}
+
+#gameCommands,
+#gameInfo,
+#gameOptions {
+  position: absolute;
+  border-left: none;
+  padding: 15px;
+}
+
+#gameOptions {
+  top: 10px;
+  left: 911px;
+  width: 350px;
+  height: 140px;
+}  
+
+#gameCommands {
+  top: 180px;
+  left: 911px;
+  width: 350px;
+  height: 160px;
+}
+
+#gameInfo {
+  top: 370px;
+  left: 911px;
+  width: 350px;
+  height: 260px;
+}
+
+#gameOptions > p,
+#gameCommands > p,
+#gameInfo > p {
+  margin-top: 0px;
+} 
+  
+.turquoise-borders {
+  border: 1px solid var(--turquoise-color);
+  box-shadow: 0 0 0 transparent, 0px 0px 10px var(--turquoise-color), inset 0px 0px 5px var(--turquoise-color);
+}
+
+#gameState {
+  position: absolute;
+  display: table;
+  top: 20px;
+  left: 10px;
+  text-align: center;
+}
+
+.table-cell {
+  display: table-cell;
+}
+
+.pink-text {
+  color: var(--pink-color);
+  text-shadow: 0 0 0 transparent, 0 0 10px var(--pink-color), 0 0 20px rgba(255, 0, 60, 0.5), 0 0 40px var(--pink-color), 0 0 100px var(--pink-color);
+}
+
+.turquoise-text {
+  color: var(--turquoise-color);
+  text-shadow: 0 0 0 transparent, 0 0 10px var(--turquoise-color), 0 0 20px rgba(255, 0, 60, 0.5), 0 0 40px var(--turquoise-color), 0 0 100px var(--turquoise-color);
+}
+  
+@keyframes buzz {
+  70% {
+    opacity: 0.80;
+  }
+}
+  
+@keyframes blink {
+  40% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 0.8;
+  }
+  43% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.2;
+  }
+  46% {
+    opacity: 1;
+  }
+}   
+  
+@keyframes scale {
+  0% {
+    transform: scale(3);
+  }
+  25% {
+    transform: scale(1);
+  }
+  27% {
+    transform: scale(2);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+@keyframes blink2 {
+  40% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.8;
+  }
+  47% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  55% {
+    opacity: 1;
+  }
+} 
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

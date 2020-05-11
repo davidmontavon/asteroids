@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Asteroids</title>
+        <link rel="stylesheet" href="asteroids.css" type="text/css" />
+    </head>
+    <body>
+        <canvas id="game" class="turquoise-borders"></canvas>
+        <canvas id="effects"></canvas>
+
+        <div id="gameOverScreen" style="display: none;">
+          <div class="pink-text">
+            <div>GAME OVER</div>
+            <div><a href="#" class="turquoise-text linkPlayAgain">Play again</a></div>
+          </div>
+        </div>
+
+        <div id="topScoresScreen" class="turquoise-borders" style="display: none;">
+          <p class="turquoise-text">**** TOP SCORES ****</p>
+          <div>
+            <table id="topScores" class="pink-text"></table>
+          </div>
+          <div style="margin-top: 20px;">
+            <a href="#" class="turquoise-text linkPlayAgain">Play again</a>
+          </div>
+        </div>        
+
+        <div id="gameState" class="turquoise-text">
+          <div class="table-cell">
+            LIFE: <span id="life" class="pink-text"></span>
+          </div>   
+          <div class="table-cell">
+            LEVEL: <span id="level" class="pink-text"></span>
+          </div>                   
+          <div class="table-cell">
+            SCORE: <span id="score" class="pink-text"></span>
+          </div>
+          <div class="table-cell">
+            TIME: <span id="time" class="pink-text"></span>
+          </div>          
+        </div>
+
+        <div id="gameOptions" class="turquoise-borders">
+          <p class="turquoise-text">OPTIONS</p>
+          <label class="pink-text">
+            <input type="checkbox" id="soundEffectEnabled" checked>
+            Sound effects
+          </label>
+        </div>
+
+        <div id="gameCommands" class="turquoise-borders">
+          <p class="turquoise-text">COMMANDS</p>
+          <p class="pink-text">
+            Steer&nbsp;&nbsp; &#8592; &#8594;<br>
+            Thrust&nbsp; &#8593;<br>
+            Fire&nbsp;&nbsp;&nbsp; SPACE<br>
+          </p>
+        </div>
+
+        <div id="gameInfo" class="turquoise-borders">
+          <p class="turquoise-text">INFO</p>
+          <p id="info" class="pink-text"></p>
+          <p>&nbsp;</p>
+          <p id="coords" class="pink-text"></p>
+        </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.1.3/TweenMax.min.js"></script>-->
+        <script type="text/javascript" src="asteroids.js"></script>
+    </body>
+</html>
