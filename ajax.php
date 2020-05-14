@@ -4,6 +4,7 @@ header("Content-Type: application/json");
 function sanitize($str)
 {
     $str = trim($str);
+    $str = str_replace(";", "", $str);
     $str = filter_var($str, FILTER_SANITIZE_STRING);
     if (strlen($str) > 10)
         $str = substr($str, 0, 10);
