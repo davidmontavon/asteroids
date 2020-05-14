@@ -23,7 +23,8 @@ body {
 #game,
 #effects,
 #gameOverScreen,
-#topScoresScreen {
+#topScoresScreen,
+#pauseScreen {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -60,14 +61,14 @@ body {
   top: 10px;
   left: 911px;
   width: 350px;
-  height: 140px;
+  height: 130px;
 }  
 
 #gameCommands {
-  top: 180px;
+  top: 170px;
   left: 911px;
   width: 350px;
-  height: 160px;
+  height: 170px;
 }
 
 #gameInfo {
@@ -110,6 +111,23 @@ input[type='checkbox'] {
 #gameOverScreen {
     display: table;
     z-index: 3;
+}
+
+#pauseScreen {
+  display: table;
+  z-index: 3;
+}
+
+#pauseScreen > div {
+  display: table-cell;
+  width: 100%;
+  text-align: center;
+  vertical-align: middle;
+}
+
+#pause {
+  animation: buzz 1s infinite alternate, blink 1s infinite alternate;
+  font-size: 28pt;
 }
 
 #topScoresScreen {

@@ -17,6 +17,13 @@ $(document).ready(function(){
   var asteroids = [];
   var asteroidVRotation = 0.02;
   var audioContext = new AudioContext();  
+  var bonusPerTimeRange = [
+    { threshold: 30000, bonus: 1000 },
+    { threshold: 45000, bonus: 500 },
+    { threshold: 60000, bonus: 250 },
+    { threshold: 75000, bonus: 125 },
+    { threshold: 90000, bonus: 70 },
+  ];
   var bulletRadius = 2;  
   var bullets = [];
   var bulletV = 30.0;  
@@ -44,13 +51,15 @@ $(document).ready(function(){
     "Booooooh!!!",
     "There is room for improvement.",
     "Reminder: the goal is to win.",
-    "Stay focused!"
+    "Stay focused!",
   ];
   var explosionSparks = [];  
   var firstAsteroidShot = false;  
   var gameHeight = $("#game").height();  
   var gameIsOver = false;  
+  var gameIsPaused = false;
   var gameWidth = $("#game").width(); 
+  var justWonLevel = false;
   var keyLeftIsDown = false;
   var keyRightIsDown = false;    
   var keyUpIsDown = false;  
@@ -58,7 +67,7 @@ $(document).ready(function(){
     "And the last one...",
     "And last but not least...",
     "Almost there!",
-    "One more to go..."
+    "One more to go...",
   ];
   var levels = [
     {
@@ -113,6 +122,12 @@ $(document).ready(function(){
       ]
     }
   ];  
+  var levelWonMessages = [
+    "YAY!", 
+    "Good job!", 
+    "Congratulations!", 
+    ":D", 
+  ];
   var life = maxLife;  
   var maxLife = 5;  
   var maxV = 30.0;
@@ -122,6 +137,8 @@ $(document).ready(function(){
   var nbSpaceshipSparks = 30;     
   var nbSparks = 15;
   var oscillator;   
+  var pauseStart;
+  var pauseDuration = 0;
   var pinkColor = '#ee67f0';  
   var rotation = 0.0;  
   var score = 0;  
@@ -147,6 +164,20 @@ $(document).ready(function(){
       return false;
     return true;
   } 
+
+  function calculateBonusBasedOnTimeSpent(duration){
+    var bonus = 0;
+    for (var i = 0; i < bonusPerTimeRange.length; i++){
+      if (duration <= bonusPerTimeRange[i].threshold){
+        bonus = bonusPerTimeRange[i].bonus;
+        break;
+      }
+    }
+    if (bonus > 0){
+      increaseScore(bonus);
+      displayInfo(`Time bonus: +${bonus}`, true);
+    }
+  }
   
   function checkScore(callback){
     var topScoresChanged = false;
@@ -181,6 +212,8 @@ $(document).ready(function(){
   }
     
   function die(){
+    if (soundEffectsEnabled)
+      playSpaceshipExplodeSound();
     dead = true;
     life--;
     generateSpaceshipExplosion();    
@@ -406,6 +439,10 @@ $(document).ready(function(){
     }
   }    
 
+  function getTimeSpan(){
+    return performance.now() - startTime - pauseDuration;
+  }
+
   function getTopScores(callback){
     $.ajax({
       type: 'GET',
@@ -448,6 +485,7 @@ $(document).ready(function(){
   }    
   
   function loadLevel(l){
+    justWonLevel = false;
     if (l < levels.length){
       asteroids = [];
       $("#level").html(l + 1);
@@ -504,7 +542,16 @@ $(document).ready(function(){
     setTimeout(function(){
       oscillator.disconnect();
     }, 100);
-  }    
+  } 
+  
+  function playSpaceshipExplodeSound() {
+    for (var i = 0; i < 20; i++)
+      oscillator.frequency.setValueAtTime(100 - i*2 + (i % 2 == 0 ? 50 : 0), audioContext.currentTime+i/100.0);
+    oscillator.connect(audioContext.destination);
+    setTimeout(function(){
+      oscillator.disconnect();
+    }, 200);
+  } 
 
   function refreshAsteroids(){
     asteroids.map(asteroid => {
@@ -613,6 +660,7 @@ $(document).ready(function(){
   }    
 
   function resetGame(){
+    justWonLevel = false;
     $("#gameOverScreen").hide();
     $("#topScoresScreen").hide();
     setScore(0);
@@ -711,6 +759,9 @@ $(document).ready(function(){
   }     
 
   function ticks(){
+    if (gameIsPaused || justWonLevel)
+      return;
+
     ctxFX.clearRect(0, 0, gameWidth, gameHeight);
     ctx.clearRect(0, 0, gameWidth, gameHeight);
 
@@ -745,7 +796,6 @@ $(document).ready(function(){
 
       refreshSpaceshipEngineSparks();
       drawSpaceship();
-      updateTime();
     } else {
       refreshSpaceshipExplosionSparks();
 
@@ -755,15 +805,36 @@ $(document).ready(function(){
       }
     }
 
+    updateTime();
     refreshBullets();
     refreshExplosionSparks();
     refreshAsteroids();
 
     if (!dead && !won && asteroids.length == 0){
+      justWonLevel = true;
+      var duration = getTimeSpan();
+      setTimeout(function(){
+        displayRandomInfo(levelWonMessages, false);
+      }, 500);
       increaseScore(scoreIncreaseForLevelWon);
-      loadNextLevel();
+      setTimeout(function(){
+        calculateBonusBasedOnTimeSpent(duration);
+      }, 1000);
+      setTimeout(loadNextLevel, 5000);//////
     }
   }   
+
+  function togglePause(){
+    if (!gameIsPaused){
+      gameIsPaused = true;
+      pauseStart = performance.now();
+      $("#pauseScreen").show();
+    } else {
+      gameIsPaused = false;
+      pauseDuration += performance.now() - pauseStart;
+      $("#pauseScreen").hide();
+    }
+  }
 
   function toggleSoundEffects(){
     soundEffectsEnabled = $("#soundEffectEnabled").is(":checked");
@@ -778,10 +849,10 @@ $(document).ready(function(){
   
   ////// TODO: adapt score accordingly
   function updateTime(){
-    var timeSpan = performance.now() - startTime;
+    var timeSpan = getTimeSpan();
     var seconds = timeSpan / 1000.0;
-    var minutes = Math.round(seconds / 60.0);
-    seconds = Math.round(seconds % 60);
+    var minutes = Math.floor(seconds / 60.0);
+    seconds = Math.floor(seconds % 60);
     time.innerHTML = `${minutes < 10 ? "0" : ""}${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   }
 
@@ -805,6 +876,9 @@ $(document).ready(function(){
 
 // EVENTS =========================================================================================================
   $("body").keydown(function(evt){
+    if (gameIsPaused)
+      return;
+
     if (evt.which == 38)
       keyUpIsDown = true;
     else if (evt.which == 37)
@@ -814,6 +888,12 @@ $(document).ready(function(){
   });
 
   $("body").keyup(function(evt){
+    if (evt.which == 80)
+      togglePause();
+
+    if (gameIsPaused)
+      return;
+
     if (evt.which == 38)
       keyUpIsDown = false;
     else if (evt.which == 37)
