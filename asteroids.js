@@ -7,13 +7,21 @@
  Author:          David Montavon
  GitHub repo:     https://github.com/davidmontavon/asteroids
  Created on:      05/03/2020
- Last update on:  05/14/2020
+ Last update on:  05/16/2020
 ====================================================================================================================
 */
 $(document).ready(function(){
   window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
 // VARIABLES =======================================================================================================
+  var BULLET_TYPE_NORMAL = 0;
+  var BULLET_TYPE_FRAGMENTED = 1;
+
+  var pinkColor = '#ee67f0';  
+  var redColor = '#f33';
+  var turquoiseColor = '#2df6ec';    
+  var yellowColor = '#cac2a6';
+
   var asteroids = [];
   var asteroidVRotation = 0.02;
   var audioContext = new AudioContext();  
@@ -26,7 +34,21 @@ $(document).ready(function(){
   ];
   var bulletRadius = 2;  
   var bullets = [];
-  var bulletV = 30.0;  
+  var bulletType;
+  var bulletTypes = [
+    {
+      name: "Normal",
+      color: turquoiseColor,
+      count: undefined
+    },
+    {
+      name: "Fragmentation",
+      color: yellowColor,
+      count: 0
+    },
+  ];
+  var bulletV = 30.0;
+  var canChangeAmmo = false;  
   var canvas = document.querySelector("#game");
   var canvasFX = document.querySelector("#effects");   
   var ctx = canvas.getContext("2d");
@@ -55,10 +77,16 @@ $(document).ready(function(){
   ];
   var explosionSparks = [];  
   var firstAsteroidShot = false;  
+  var gameEvents = [
+    { probability: 1.0 / 1000.0,  event: linkAsteroidFateToSpaceshipFate },
+    { probability: 1.0 / 500.0,   event: assignFragmentationBulletAmmoItemToAsteroid },
+    { probability: 1.0 / 1500.0,   event: assignLifeItemToAsteroid },
+  ];
   var gameHeight = $("#game").height();  
   var gameIsOver = false;  
   var gameIsPaused = false;
   var gameWidth = $("#game").width(); 
+  var items = [];
   var justWonLevel = false;
   var keyLeftIsDown = false;
   var keyRightIsDown = false;    
@@ -118,7 +146,7 @@ $(document).ready(function(){
     {
       message: "YOLOOOOOOOOOO!!!",
       asteroids: [
-        [50, 50, 150, 2, 2, 10]
+        [50, 50, 150, 2, 2, 6]
       ]
     }
   ];  
@@ -129,6 +157,7 @@ $(document).ready(function(){
     ":D", 
   ];
   var life = maxLife;  
+  var linkToSpaceshipMaxAge = 200;
   var maxLife = 5;  
   var maxV = 30.0;
   var maxVR = 10.0 * Math.PI / 180.0;
@@ -139,7 +168,6 @@ $(document).ready(function(){
   var oscillator;   
   var pauseStart;
   var pauseDuration = 0;
-  var pinkColor = '#ee67f0';  
   var rotation = 0.0;  
   var score = 0;  
   var scoreIncreaseForAsteroidHit = 10;
@@ -149,16 +177,46 @@ $(document).ready(function(){
   var spaceshipExplosionSparks = [];  
   var time = document.querySelector("#time");
   var topScoresMaxEntries = 10; 
-  var turquoiseColor = '#2df6ec';  
   var typeWriterSpeed = 10; 
+  var typing = false;
   var v = 0.0;   
   var vFactor = 2.0;
   var won = false;
   var x;
-  var y;   
+  var y;
+  
+  var asteroidColorsPerNbParts = [
+    { nbParts: 2, color: pinkColor },
+    { nbParts: 4, color: yellowColor },
+    { nbParts: 6, color: redColor },
+  ];
 
 
 // FUNCTIONS =======================================================================================================
+  function assignFragmentationBulletAmmoItemToAsteroid(){
+    if (asteroids.length > 0){
+      var item = { x: 0, y: 0, age: 100, draw: drawFragmentationBulletAmmoItem, pickup: pickUpFragmentationBulletAmmoItem };//////
+      var rnd = Math.round(Math.random() * (asteroids.length - 1));
+      if (asteroids[rnd].item == undefined){
+        asteroids[rnd].item = item;
+        displayInfo("An asteroid contains a secret item...", false);//////
+        setTimeout(function(){ displayInfo("", false); }, 5000);//////    
+      }
+    }
+  }
+
+  function assignLifeItemToAsteroid(){
+    if (asteroids.length > 0 && life < maxLife){
+      var item = { x: 0, y: 0, age: 100, draw: drawLifeItem, pickup: pickUpLifeItem };//////
+      var rnd = Math.round(Math.random() * (asteroids.length - 1));
+      if (asteroids[rnd].item == undefined){
+        asteroids[rnd].item = item;
+        displayInfo("An asteroid contains a secret item...", false);//////
+        setTimeout(function(){ displayInfo("", false); }, 5000);//////    
+      }
+    }   
+  }
+
   function bulletIsInTheAsteroid(bullet, asteroid){
     if (bullet.x+bulletRadius < asteroid.x || bullet.x > asteroid.x + asteroid.w || bullet.y+bulletRadius < asteroid.y || bullet.y > asteroid.y + asteroid.h)
       return false;
@@ -177,6 +235,38 @@ $(document).ready(function(){
       increaseScore(bonus);
       displayInfo(`Time bonus: +${bonus}`, true);
     }
+  }
+
+  function changeAmmo(){
+    var index = bulletTypes.indexOf(bulletType);
+    if (++index < bulletTypes.length){
+      bulletType = bulletTypes[index];
+    } else {
+      bulletType = bulletTypes[0];
+    }
+    updateAmmoType();
+    //////display message
+  }
+
+  function checkAmmo(){
+    canChangeAmmo = false;
+    for (var i = 1; i < bulletTypes.length; i++){//////
+      if (bulletTypes[i].count > 0){
+        canChangeAmmo = true;
+        break;
+      }
+    }
+    var changeAmmoCommand = $("#changeAmmoCommand");
+    if (!canChangeAmmo && !changeAmmoCommand.hasClass("inactive"))
+      changeAmmoCommand.addClass("inactive");
+    else if (canChangeAmmo && changeAmmoCommand.hasClass("inactive"))
+      changeAmmoCommand.removeClass("inactive");
+
+    if (bulletType.count == 0){
+      bulletType = bulletTypes[BULLET_TYPE_NORMAL];
+    }
+
+    updateAmmoType();//////
   }
   
   function checkScore(callback){
@@ -230,17 +320,24 @@ $(document).ready(function(){
   }   
   
   function displayInfo(message, append){
-    if (append)
-      document.querySelector("#info").innerHTML += "<br><br>";
-    else
-      $("#info").html("");
-    var i = 0;
-    (function typeWriter() {
-      if (i < message.length) {
-        document.querySelector("#info").innerHTML += message.charAt(i++);
-        setTimeout(typeWriter, typeWriterSpeed);
-      }
-    })();
+    if (!typing){
+      typing = true;
+      if (append)
+        document.querySelector("#info").innerHTML += "<br><br>";
+      else
+        $("#info").html("");
+      var i = 0;
+      (function typeWriter() {
+        if (i < message.length) {
+          document.querySelector("#info").innerHTML += message.charAt(i++);
+          setTimeout(typeWriter, typeWriterSpeed);
+        } else {
+          typing = false;
+        }
+      })();
+    } else {
+      //////
+    }
   }
 
   function displayRandomInfo(messages, append){
@@ -263,8 +360,13 @@ $(document).ready(function(){
 
   function drawAsteroid(asteroid){
     ctx.save();
-    ctx.strokeStyle = pinkColor;
-    ctx.shadowColor = pinkColor;
+    if (!asteroid.linkedToSpaceshipFate){
+      ctx.strokeStyle = asteroid.color;
+      ctx.shadowColor = asteroid.color;
+    } else {
+      ctx.strokeStyle = turquoiseColor;
+      ctx.shadowColor = turquoiseColor;
+    }
     ctx.shadowBlur = 10;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -279,8 +381,8 @@ $(document).ready(function(){
   }    
 
   function drawBullet(bullet){
-    ctx.fillStyle = turquoiseColor;
-    ctx.shadowColor = turquoiseColor;
+    ctx.fillStyle = bullet.type.color;
+    ctx.shadowColor = bullet.type.color;
     ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(Math.round(bullet.x), Math.round(bullet.y), bulletRadius, 0, 6.283185);
@@ -288,10 +390,52 @@ $(document).ready(function(){
   }
 
   function drawExplosionSpark(explosionSpark){
-    ctxFX.fillStyle = pinkColor;
+    ctxFX.fillStyle = explosionSpark.color;
     ctxFX.beginPath();
     ctxFX.arc(Math.round(explosionSpark.x), Math.round(explosionSpark.y), 1.0, 0, 6.283185);
     ctxFX.fill();
+  }
+
+  function drawFragmentationBulletAmmoItem(item){
+    ctx.fillStyle = bulletTypes[BULLET_TYPE_FRAGMENTED].color;
+    ctx.shadowColor = bulletTypes[BULLET_TYPE_FRAGMENTED].color;
+    ctx.shadowBlur = 10;
+    var x = Math.round(item.x);
+    var y = Math.round(item.y);
+    ctx.beginPath();
+    ctx.arc(x+5, y+5, bulletRadius, 0, 6.283185);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x+20, y+5, bulletRadius, 0, 6.283185);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x+12, y+13, bulletRadius, 0, 6.283185);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x+5, y+20, bulletRadius, 0, 6.283185);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x+20, y+20, bulletRadius, 0, 6.283185);
+    ctx.fill();
+    ctx.strokeStyle = bulletTypes[BULLET_TYPE_FRAGMENTED].color;
+    ctx.beginPath();
+    ctx.arc(x+12, y+12, 18, 0, 6.283185);
+    ctx.stroke();
+  }
+
+  function drawLifeItem(item){
+    ctx.fillStyle = redColor;
+    ctx.shadowColor = redColor;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    var x = Math.round(item.x);
+    var y = Math.round(item.y);
+    ctx.moveTo(x+18, y);
+    ctx.lineTo(x, y+36);
+    ctx.lineTo(x+18, y+22);
+    ctx.lineTo(x+36, y+36);
+    ctx.closePath();
+    ctx.fill();
   }
 
   function drawSpaceship(){
@@ -326,21 +470,16 @@ $(document).ready(function(){
     ctxFX.fill();
   }    
   
-  function fire(){
+  function fire(multiply = false){
     if (soundEffectsEnabled)
       playShootSound();
-    var bvx = bulletV * Math.sin(rotation);
-    var bvy = bulletV * -Math.cos(rotation);
-    var bx = x + bvx + 30.0;
-    var by = y + bvy + 30.0;
-    bullets.push({
-      x: bx,
-      y: by,
-      vx: bvx,
-      vy: bvy,
-      age: 20,
-      a: rotation
-    });
+    var bx = x + 30.0;
+    var by = y + 30.0;
+    if (bulletType.count != undefined){
+      bulletType.count--;
+      checkAmmo();//////
+    }
+    generateBullet(bx, by, rotation, multiply);//////
   }   
   
   function gameOver(){
@@ -372,6 +511,7 @@ $(document).ready(function(){
         maxPY = py;
       points.push([px, py]);
     }
+    var color = asteroidColorsPerNbParts.find(cp => cp.nbParts == nbParts).color;
     var asteroid = {
       x: ax,
       y: ay,
@@ -383,12 +523,31 @@ $(document).ready(function(){
       vr: avr,
       r: radius,
       a: 0.0,
-      nbParts: nbParts
+      nbParts: nbParts,
+      color: color,
+      linkedToSpaceshipFate: false,
+      linkToSpaceshipAge: 0,
+      item: undefined,
     };
     asteroids.push(asteroid);          
   }                                        
 
-  function generateExplosion(ex, ey){
+  function generateBullet(x, y, angle, multiply){
+    var bvx = bulletV * Math.sin(angle);
+    var bvy = bulletV * -Math.cos(angle);
+    bullets.push({
+      x: x + bvx,
+      y: y + bvy,
+      vx: bvx,
+      vy: bvy,
+      age: 20,
+      a: angle,
+      type: bulletType,
+      multiply: multiply,
+    });
+  }
+
+  function generateExplosion(ex, ey, c){
     var evMax = 5.0;
     for (var i = 0; i < nbSparks; i++){                    
       var ev = Math.random() * (evMax - 1.0) + 1.0;
@@ -400,10 +559,29 @@ $(document).ready(function(){
         y: ey,
         vx: evx,
         vy: evy,
-        age: 20
+        age: 20,
+        color: c,
       });
     }
-  }    
+  }
+
+  function generateItem(x, y, age, draw, pickup){
+    items.push({
+      x: x,
+      y: y,
+      age: age,
+      draw: draw,
+      pickup: pickup,
+    });
+  }
+
+  function generateRandomEventsGivenProbabilities(){
+    gameEvents.map(gameEvent => {
+      var rnd = Math.round(Math.random() * 1.0 / gameEvent.probability);
+      if (rnd == 1)
+        gameEvent.event();
+    });
+  }
 
   function generateSpaceshipEngineFire(){
     var evMax = 5.0;
@@ -482,11 +660,22 @@ $(document).ready(function(){
     if (index > -1) {
       asteroids.splice(index, 1);
     };
-  }    
+  }
+  
+  function linkAsteroidFateToSpaceshipFate(){
+    if (asteroids.length > 0){
+      var rnd = Math.round(Math.random() * (asteroids.length - 1));
+      asteroids[rnd].linkedToSpaceshipFate = true;
+      asteroids[rnd].linkToSpaceshipAge = linkToSpaceshipMaxAge;
+      displayInfo("An asteroid became linked to you. Destroying it will destroy you.", false);
+      setTimeout(function(){ displayInfo("", false); }, 5000);//////
+    }
+  }
   
   function loadLevel(l){
     justWonLevel = false;
     if (l < levels.length){
+      items = [];
       asteroids = [];
       $("#level").html(l + 1);
       levels[l].asteroids.map(asteroid => generateAsteroid(
@@ -526,9 +715,47 @@ $(document).ready(function(){
     return ret;
   }
 
+  function multiplyBullet(bullet){
+    for (var i = Math.PI / 8.0; i <= Math.PI * 2.0 + Math.PI / 8.0; i += Math.PI / 4.0){
+      generateBullet(bullet.x, bullet.y, i, false);//////
+    }
+  }
+
+  //////TODO: play a custom sound
+  function pickUpFragmentationBulletAmmoItem(item){
+    bulletTypes[BULLET_TYPE_FRAGMENTED].count += 5;
+    checkAmmo();
+    //////
+    var index = items.indexOf(item);
+    if (index > -1) {
+        items.splice(index, 1);
+    };
+  }
+
+  //////TODO: play a custom sound
+  function pickUpLifeItem(item){
+    life++;
+    updateLife();
+    //////
+    var index = items.indexOf(item);
+    displayInfo("1UP!", false);
+    if (index > -1) {
+        items.splice(index, 1);
+    };
+  }
+
   function playAsteroidExplodeSound() {
     for (var i = 0; i < 20; i++)
       oscillator.frequency.setValueAtTime(70 - i + (i % 2 == 0 ? 50 : 0), audioContext.currentTime+i/100.0);
+    oscillator.connect(audioContext.destination);
+    setTimeout(function(){
+      oscillator.disconnect();
+    }, 200);
+  }
+
+  function playItemPickUpSound(){
+    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(500, audioContext.currentTime + (1.0/10.0));
     oscillator.connect(audioContext.destination);
     setTimeout(function(){
       oscillator.disconnect();
@@ -567,6 +794,10 @@ $(document).ready(function(){
         asteroid.y = gameHeight - halfRadius;
       asteroid.x += asteroid.vx;
       asteroid.y += asteroid.vy;
+      if (asteroid.linkedToSpaceshipFate){
+        asteroid.linkToSpaceshipAge--;
+        asteroid.linkedToSpaceshipFate = (asteroid.linkToSpaceshipAge > 0);
+      }
       drawAsteroid(asteroid);
       if (!dead && spaceshipIsInTheAsteroid(asteroid)){
         die();
@@ -579,17 +810,27 @@ $(document).ready(function(){
     bullets.map(bullet => {
       asteroids.map(asteroid => {
         if (bulletIsInTheAsteroid(bullet, asteroid)){
-          if (currentLevel == 0 && !firstAsteroidShot){
-            firstAsteroidShot = true;
-            displayInfo("Good job! You got it!");
+          if (asteroid.item != undefined){
+            generateItem(asteroid.x, asteroid.y, asteroid.item.age, asteroid.item.draw, asteroid.item.pickup);
           }
-          increaseScore(scoreIncreaseForAsteroidHit);
+          if (asteroid.linkedToSpaceshipFate){
+            die();
+          } else {
+            if (currentLevel == 0 && !firstAsteroidShot){
+              firstAsteroidShot = true;
+              displayInfo("Good job! You got it!");
+            }
+            increaseScore(scoreIncreaseForAsteroidHit);
+          }         
+          if (bullet.type == bulletTypes[BULLET_TYPE_FRAGMENTED] && bullet.multiply){
+            multiplyBullet(bullet);
+          } 
           bullet.age = 0;
           var astCX = asteroid.x + asteroid.w / 2.0;
           var astCY = asteroid.y + asteroid.h / 2.0;
           if (soundEffectsEnabled)
             playAsteroidExplodeSound();
-          generateExplosion(astCX, astCY);
+          generateExplosion(astCX, astCY, asteroid.color);
           if (asteroid.r >= minAsteroidRadius)
             splitAsteroid(asteroid, bullet.a);
           else {
@@ -628,6 +869,28 @@ $(document).ready(function(){
       });
     }
   }  
+
+  function refreshItems(){
+    if (items.length > 0){
+      var i = 0;
+      items.map(item => {
+        if (item.age < 0 && i > -1){
+          items.splice(i, 1);
+        } else {
+          item.y -= 2.0 * Math.sin(item.age);
+          if (item.age >= 30 || item.age < 30 && item.age % 2 == 0)
+            item.draw(item);
+        }
+        item.age--;
+        i++;
+        if (!dead && spaceshipIsInTheItem(item)){
+          if (soundEffectsEnabled)
+            playItemPickUpSound();//////
+          item.pickup(item);
+        }
+      });
+    }
+  }
 
   function refreshSpaceshipEngineSparks(){
     var i = 0;
@@ -672,6 +935,7 @@ $(document).ready(function(){
     updateLife();
     currentLevel = -1;
     loadNextLevel();
+    updateAmmoType();
   }
 
   function resetSpaceship(){
@@ -683,6 +947,8 @@ $(document).ready(function(){
     keyUpIsDown = false;
     keyLeftIsDown = false;
     keyRightIsDown = false;
+    bulletType = bulletTypes[BULLET_TYPE_NORMAL];
+    updateAmmoType();
   }   
   
   function resetTime(){
@@ -706,6 +972,12 @@ $(document).ready(function(){
   
   function spaceshipIsInTheAsteroid(asteroid){
     if (x+60 < asteroid.x || x > asteroid.x + asteroid.w || y+60 < asteroid.y || y > asteroid.y + asteroid.h)
+      return false;
+    return true;
+  }
+
+  function spaceshipIsInTheItem(item){
+    if (x+60 < item.x || x > item.x + 36 || y+60 < item.y || y > item.y + 36)
       return false;
     return true;
   }
@@ -794,6 +1066,7 @@ $(document).ready(function(){
       else if (y + 30 < 0)
         y = gameHeight - 30;
 
+      generateRandomEventsGivenProbabilities();
       refreshSpaceshipEngineSparks();
       drawSpaceship();
     } else {
@@ -809,6 +1082,7 @@ $(document).ready(function(){
     refreshBullets();
     refreshExplosionSparks();
     refreshAsteroids();
+    refreshItems();
 
     if (!dead && !won && asteroids.length == 0){
       justWonLevel = true;
@@ -820,9 +1094,9 @@ $(document).ready(function(){
       setTimeout(function(){
         calculateBonusBasedOnTimeSpent(duration);
       }, 1000);
-      setTimeout(loadNextLevel, 5000);//////
+      setTimeout(loadNextLevel, 3000);
     }
-  }   
+  }  
 
   function togglePause(){
     if (!gameIsPaused){
@@ -838,6 +1112,13 @@ $(document).ready(function(){
 
   function toggleSoundEffects(){
     soundEffectsEnabled = $("#soundEffectEnabled").is(":checked");
+  }
+
+  function updateAmmoType(){
+    if (bulletType.count == undefined)
+      $("#ammoType").html(`${bulletType.name}`);
+    else
+      $("#ammoType").html(`${bulletType.name} - ${bulletType.count}`);
   }
 
   function updateLife(){
@@ -900,8 +1181,11 @@ $(document).ready(function(){
       keyLeftIsDown = false;
     else if (evt.which == 39)
       keyRightIsDown = false;
-    else if (evt.which == 32 && !dead)
-      fire();
+    else if (evt.which == 32 && !dead){
+      var multiply = (bulletType == bulletTypes[BULLET_TYPE_FRAGMENTED]);
+      fire(multiply);
+    } else if (evt.which == 67 && canChangeAmmo)
+      changeAmmo();
   });
 
   $(".linkPlayAgain").click(resetGame);   
