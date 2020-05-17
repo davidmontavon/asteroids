@@ -7,7 +7,7 @@
  Author:          David Montavon
  GitHub repo:     https://github.com/davidmontavon/asteroids
  Created on:      05/03/2020
- Last update on:  05/16/2020
+ Last update on:  05/17/2020
 ====================================================================================================================
 */
 $(document).ready(function(){
@@ -162,6 +162,8 @@ $(document).ready(function(){
   var maxV = 30.0;
   var maxVR = 10.0 * Math.PI / 180.0;
   var minAsteroidRadius = 10.0;  
+  var minScreenWidth = 1100;
+  var minScreenHeight = 700;
   var nbSpaceshipEngineSparks = 3; 
   var nbSpaceshipSparks = 30;     
   var nbSparks = 15;
@@ -639,20 +641,25 @@ $(document).ready(function(){
   }   
 
   function init(){
-    $("#score").html(score);
-    toggleSoundEffects();
+    if ($(document).width() >= minScreenWidth && $(document).height() >= minScreenHeight){
+      $("#score").html(score);
+      toggleSoundEffects();
 
-    $("#game").attr("width", gameWidth);
-    $("#game").attr("height", gameHeight);
-    $("#effects").attr("width", gameWidth);
-    $("#effects").attr("height", gameHeight);
+      $("#game").attr("width", gameWidth);
+      $("#game").attr("height", gameHeight);
+      $("#effects").attr("width", gameWidth);
+      $("#effects").attr("height", gameHeight);
 
-    oscillator = audioContext.createOscillator();
-    oscillator.type = 'square';
-    oscillator.start(0);
-  
-    resetGame();
-    setInterval(ticks, 50);
+      oscillator = audioContext.createOscillator();
+      oscillator.type = 'square';
+      oscillator.start(0);
+    
+      resetGame();
+      setInterval(ticks, 50);
+    } else {
+      $("#errorMessage").html(`To play this game, your screen must be at least ${minScreenWidth} x ${minScreenHeight} pixels.`);
+      $("#errorScreen").show();
+    }
   }
   
   function killAsteroid(asteroid){

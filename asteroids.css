@@ -23,7 +23,8 @@ body {
 #effects,
 #gameOverScreen,
 #topScoresScreen,
-#pauseScreen {
+#pauseScreen,
+#errorScreen {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -127,6 +128,19 @@ input[type='checkbox'] {
 }
 
 #pauseScreen > div {
+  display: table-cell;
+  width: 100%;
+  text-align: center;
+  vertical-align: middle;
+}
+
+#errorScreen {
+  display: table;
+  z-index: 9;
+  background-color: var(--dark-color);
+}
+
+#errorScreen > div {
   display: table-cell;
   width: 100%;
   text-align: center;
